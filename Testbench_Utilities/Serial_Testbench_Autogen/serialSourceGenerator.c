@@ -101,9 +101,10 @@ void main(int argc, char **argv){
     uint8_t     OPT = 0;        // Testbench generation and more here
 
     for(uint32_t n = 1; n < MAX(MINARGS, argc); n++){
-        printf("Iter %3u\n", n);
         if(ISARG(argv[n][0])){
+ #ifdef DEBUG_OUTPUT
             printf("Argument Detected:\t%s\n", argv[n]);
+ #endif // DEBUG_OUTPUT
             switch(argv[n][1]){
                 case PROTOCOL:
                     state_select[PROTOCOL_PTR] = is_valid_protocol(argv[++n]);
@@ -287,6 +288,8 @@ void main(int argc, char **argv){
     if(state_select[DATA_SRC_PTR] != RETURN_ERROR){
         free(data_set);
     }
+
+    printf("All done :^)\n");
 
 }   // END MAIN
 
@@ -495,6 +498,7 @@ void generate_tb(FILE *fp, uint8_t protocol, uint32_t delay_ns, uint16_t values_
         break;
     }
 
+    fprintf(fp, "\n\tlocalparam SERIALIZED_LEN = %u;\n", values_written);
     fprintf(fp, "\n\tinteger n;\n\treg SERIAL_STREAM;\n\treg serialized_values[0:%u];\n", values_written - 1);
     fprintf(fp, "\n\tinitial begin\n\t\tn = 0;\n\t\tSERIAL_STREAM = %c;\n", START_VAL);
     fprintf(fp, "\t\t$readmemh(\"serialized_data.mem\", serialized_values);\n");
@@ -502,7 +506,8 @@ void generate_tb(FILE *fp, uint8_t protocol, uint32_t delay_ns, uint16_t values_
     fprintf(fp, "\n\t\tforever begin\n\t\t\t");
     fprintf(fp, "if(en) begin\n\t\t\t\t");
     fprintf(fp, "SERIAL_STREAM <= serialized_values[n];\n\t\t\t\t");
-    fprintf(fp, "n <= n + 1;\n\t\t\t\t");
+    fprintf(fp, "if(n < SERIALIZED_LEN - 1) n <= n + 1;\n\t\t\t\t");
+    fprintf(fp, "else n <= 0;\n\t\t\t\t");
     fprintf(fp, "#%u;\t//This determines your baudrate\n\t\t\tend\n", delay_ns);
     fprintf(fp, "\t\tend\n\tend\n");
 
