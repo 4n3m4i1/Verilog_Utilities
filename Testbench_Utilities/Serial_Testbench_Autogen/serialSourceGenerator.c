@@ -435,7 +435,7 @@ uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t d
 
     uint8_t data_bit_ct = fmt_rules & 0x0F;
     uint8_t parity_type = fmt_rules & (0x03 << 4);
-    uint8_t stop_bit_ct = (fmt_rules >> 6 & 0x01) + 1;
+    uint8_t stop_bit_ct = (fmt_rules >> 6 & 0x01);
 #ifdef DEBUG_OUTPUT
     printf("FUNCTION MESSAGE: %u Data Bits\n", data_bit_ct);
     printf("FUNCTION MESSAGE: %u Stop Bits\n", stop_bit_ct);
@@ -454,9 +454,9 @@ uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t d
             for(uint16_t m = 0; m < data_bit_ct; m++){
                 char tbw = ((data_src[n] & (1 << m)) ? '1' : '0');
                 if(tbw == '1') parity_chk_accum += 1;
-                fprintf(fp, "%c", tbw);         // Data Bits
+                fprintf(fp, "%c\n", tbw);         // Data Bits
                 bytes_written += 1;
-                if(!(m == (data_bit_ct - 1) && n == data_len - 1)) fprintf(fp, "\n");
+                //if(!(m == (data_bit_ct - 1) && n == data_len - 1)) fprintf(fp, "\n");
             }
 
             // Parity Checking
@@ -477,10 +477,15 @@ uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t d
 
 
             // Stop Bits
-            for(uint8_t m = 0; m < stop_bit_ct; m++){
-                fprintf(fp, "1\n");
+            if(stop_bit_ct){
+                fprintf(fp, "1\n1");
+                bytes_written += 2;
+            } else {                // Single stop bit
+                fprintf(fp, "1");
                 bytes_written += 1;
             }
+
+            if(!(n == data_len - 1)) fprintf(fp, "\n");
         }
     }
 
