@@ -28,11 +28,15 @@ stream.
 - `-d` Inline data to be serialized (hex -> 0xVALUE or base 10)
   
 - `-f` Format, protocol specific
-    - example: 8N1, 8O2, 7E2m etc.. (this is case sensitive!!)
+    - example: 8N1, 8O2, 7E2 etc.. (this is case sensitive!!)
   
+- `w` Data Width in bits for external file data source
+    - Valid: 8 (default), 16, 24, 32
+
 - `-D` Data from some file to be serialized
-    - Not supported fully at the moment
-      
+    - Should be hex values seperated by a newline
+    - Example `-D file_in_execution_directory.txt`
+
 - `b` Baudrate, integer base 10 format (bits / s)
   
 - `T` Generate Testbench snippit code  
@@ -50,5 +54,20 @@ Will generate a `.mem` file containing the serialized form of
 the inline data bytes provided (0xAA 0x55 0xFF 0x81) in little endian  
 8N1 format, a testbench is generated that matches 500k baud output.  
 There will be a 10 bit delay (10 * 1/BAUDRATE seconds) between data frames  
-(eg. last STOP bit -> 10 bits idle -> next START)
+(eg. last STOP bit -> 10 bits idle -> next START)  
+  
+
+### Example Using File Data Sources
+A file named `testVectors.mem` containing the following:  
+```
+0xAA
+55
+22
+```
+Can be processed via the following:  
+`./serialSourceGen -p uart -w 8 -D testVectors.mem -f 8N1 -b 500000 -T`  
+Note: when using 8 bit datatypes specifying a `-w` width is optional.  
+Note: The width specifier must be present before the `-D` file call
+  
+
 

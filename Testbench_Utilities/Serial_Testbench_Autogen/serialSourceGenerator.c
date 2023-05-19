@@ -36,7 +36,8 @@
         -b      Baudrate
                     base 10 baudrate, bits / s
 
-        -w      Data Width (unsupported rn, default is dynamic width)
+        -w      Data Width for external file
+                    integer number of BITS not bytes
 
 
         -T      Generate testbench file
@@ -71,12 +72,12 @@
 
 #define PROTOCOL    'p'
 #define FORMAT      'f'
+#define DATA_WIDTH  'w'
 #define DATA_RAW    'd'
 #define DATA_FILE   'D'
 #define BAUD        'b'
 #define GEN_TB      'T'
 #define PAUSEBITS   'P'
-
 
 struct EXTFILE_IO{
     uint8_t *data_buffer;
@@ -123,6 +124,8 @@ void main(int argc, char **argv){
     uint8_t     OPT = 0;        // Testbench generation and more here
     uint32_t    PAUSE = 0;      // Pause between data frames in units of bits
 
+    uint8_t     DATAWIDTH = 8;  // Default 8 bit width vals
+
     for(uint32_t n = 1; n < MAX(MINARGS, argc); n++){
         if(ISARG(argv[n][0])){
  #ifdef DEBUG_OUTPUT
@@ -138,6 +141,19 @@ void main(int argc, char **argv){
 
                 case FORMAT:
                     state_select[FORMAT_PTR] = fmt_create(state_select[PROTOCOL_PTR], argv[++n]);
+                break;
+
+                case DATA_WIDTH:
+                    if(n < argc) DATAWIDTH = (uint8_t)strtol(argv[++n], NULL, 10);
+
+                    if(DATAWIDTH == 8
+                       || DATAWIDTH == 16
+                       || DATAWIDTH == 24
+                       || DATAWIDTH == 32){
+                       } else {
+                            printf("Invalid data width provided. Defaulting to 8 bits.\n");
+                            DATAWIDTH = 8;
+                       }
                 break;
 
                 case DATA_RAW:{
@@ -268,7 +284,7 @@ void main(int argc, char **argv){
 
                     //uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, const uint8_t basesel, uint8_t d_width){
                     if(n < argc){
-                        if(handle_external_data(file_data, argv[++n], 16, 8)){
+                        if(handle_external_data(file_data, argv[++n], 16, DATAWIDTH)){
                             printf("File handling error!!\n");
                         } else {
                             data_set = file_data->data_buffer;
@@ -467,27 +483,27 @@ uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, con
 
         file_params->data_buffer = (uint8_t *)malloc((d_width >> 3) * file_line_ct);
         file_params->data_length = (d_width >> 3) * file_line_ct;
-
+#ifdef DEBUG_OUTPUT
         printf("Allocated %u bytes for data\n", file_params->data_length);
-
+#endif
         if(file_params->data_buffer){
             if(basesel == 10){
                 for(uint16_t n = 0; n < file_line_ct; n++){
                     read_len = fscanf(extfp, "%d", &tmp_rd_val);
 
-                    uint32_t tv = (uint32_t)tmp_rd_val;
-                    file_params->data_buffer[dynarr_wp++] = tv & 0xFF;
+                    uint8_t *tv = (uint8_t *)(&tmp_rd_val);
+                    file_params->data_buffer[dynarr_wp++] = tv[0];
 
                     if(d_width > 8){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 8) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[1];
                     }
 
                     if(d_width > 16){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 16) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[2];
                     }
 
                     if(d_width > 24){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 24) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[3];
                     }
 
                 }
@@ -495,19 +511,19 @@ uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, con
                 for(uint16_t n = 0; n < file_line_ct; n++){
                     read_len = fscanf(extfp, "%x", &tmp_rd_val);
 
-                    uint32_t tv = (uint32_t)tmp_rd_val;
-                    file_params->data_buffer[dynarr_wp++] = tv & 0xFF;
+                    uint8_t *tv = (uint8_t *)(&tmp_rd_val);
+                    file_params->data_buffer[dynarr_wp++] = tv[0];
 
                     if(d_width > 8){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 8) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[1];
                     }
 
                     if(d_width > 16){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 16) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[2];
                     }
 
                     if(d_width > 24){
-                        file_params->data_buffer[dynarr_wp++] = (tv >> 24) & 0xFF;
+                        file_params->data_buffer[dynarr_wp++] = tv[3];
                     }
                 }
             }
