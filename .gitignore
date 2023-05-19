@@ -5,3 +5,5 @@ build/
 *.asc
 *.mem
 *.v
+*.ini
+*.vcd
