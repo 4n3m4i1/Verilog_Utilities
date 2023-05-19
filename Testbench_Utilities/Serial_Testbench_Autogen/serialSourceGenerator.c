@@ -78,9 +78,17 @@
 #define PAUSEBITS   'P'
 
 
+struct EXTFILE_IO{
+    uint8_t *data_buffer;
+    uint16_t data_length;
+} EXTFILE_IO;
+
+
 uint8_t is_valid_protocol(char *input_str);
 uint8_t fmt_create(uint8_t protocol_type, char *input_str);
 uint8_t fmt_uart(char *input_str);
+
+uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, const uint8_t basesel, uint8_t d_width);
 
 void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt, uint32_t pause_bits);
 uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t data_len, uint32_t pause_bits);
@@ -94,6 +102,7 @@ struct {
     uint16_t padding_bits_written;
 } GENVALS;
 */
+
 void main(int argc, char **argv){
     if(argc < MINARGS){
         printf("Invalid number of arguments.\n");
@@ -251,8 +260,27 @@ void main(int argc, char **argv){
                 }
                 break;
 
-                case DATA_FILE:
+                case DATA_FILE:{
                     state_select[DATA_SRC_PTR] = DATA_EXTERNAL;
+                    struct EXTFILE_IO *file_data;
+                    file_data = (struct EXTFILE_IO *)malloc(sizeof(EXTFILE_IO));
+
+
+                    //uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, const uint8_t basesel, uint8_t d_width){
+                    if(n < argc){
+                        if(handle_external_data(file_data, argv[++n], 16, 8)){
+                            printf("File handling error!!\n");
+                        } else {
+                            data_set = file_data->data_buffer;
+                            data_count = file_data->data_length;
+                        }
+                    } else {
+                        printf("No file path provided!\n");
+                    }
+
+
+                    free(file_data);
+                }
                 break;
 
                 case BAUD:
@@ -405,7 +433,94 @@ uint8_t fmt_uart(char *input_str){
 
     return retval;
 }
+/////////////////////////////////////////////////////////////////////////////
+// Handle external file input, parse, and allocation
+//  account for different bases of data
+uint8_t handle_external_data(struct EXTFILE_IO *file_params, char *filepath, const uint8_t basesel, uint8_t d_width){
+    uint8_t retval = 0;
+    FILE *extfp;
 
+    extfp = fopen((const char *)filepath, "r");
+
+    if(!extfp){
+        printf("FUNCTION MESSAGE: Provided File Path does not exist!\n");
+        retval = RETURN_ERROR;
+    } else {
+        char linebuffer[MAX_DIN_CHAR_LEN];
+        uint8_t read_len;
+        int32_t tmp_rd_val;
+        uint16_t file_line_ct;
+        uint16_t dynarr_wp = 0;
+
+        // Get line len of file
+        char testchar = getc(extfp);
+        while(testchar != EOF){
+            if(testchar == '\n') file_line_ct += 1;
+            testchar = getc(extfp);
+        }
+
+        printf("Data Width of %u\n", d_width);
+        printf("Read %u lines from %s\n", file_line_ct, filepath);
+
+
+        rewind(extfp);
+
+        file_params->data_buffer = (uint8_t *)malloc((d_width >> 3) * file_line_ct);
+        file_params->data_length = (d_width >> 3) * file_line_ct;
+
+        printf("Allocated %u bytes for data\n", file_params->data_length);
+
+        if(file_params->data_buffer){
+            if(basesel == 10){
+                for(uint16_t n = 0; n < file_line_ct; n++){
+                    read_len = fscanf(extfp, "%d", &tmp_rd_val);
+
+                    uint32_t tv = (uint32_t)tmp_rd_val;
+                    file_params->data_buffer[dynarr_wp++] = tv & 0xFF;
+
+                    if(d_width > 8){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 8) & 0xFF;
+                    }
+
+                    if(d_width > 16){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 16) & 0xFF;
+                    }
+
+                    if(d_width > 24){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 24) & 0xFF;
+                    }
+
+                }
+            } else {
+                for(uint16_t n = 0; n < file_line_ct; n++){
+                    read_len = fscanf(extfp, "%x", &tmp_rd_val);
+
+                    uint32_t tv = (uint32_t)tmp_rd_val;
+                    file_params->data_buffer[dynarr_wp++] = tv & 0xFF;
+
+                    if(d_width > 8){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 8) & 0xFF;
+                    }
+
+                    if(d_width > 16){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 16) & 0xFF;
+                    }
+
+                    if(d_width > 24){
+                        file_params->data_buffer[dynarr_wp++] = (tv >> 24) & 0xFF;
+                    }
+                }
+            }
+        } else {
+            printf("FUNCTION MESSAGE: File Buffer Dynamic Allocation Failed. :(\n");
+            retval = RETURN_ERROR;
+        }
+
+
+    }
+
+    return retval;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 // Actually create output serial data stream and
@@ -543,4 +658,7 @@ void generate_tb(FILE *fp, uint8_t protocol, uint32_t delay_ns, uint16_t values_
     fprintf(fp, "\t\tend\n\tend\n");
 
 }
+
+
+
 

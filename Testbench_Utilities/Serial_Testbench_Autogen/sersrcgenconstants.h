@@ -26,6 +26,7 @@
 
 #define DATA_SRC_PTR    2
 #define MAX_DIN_CT      16
+#define MAX_DIN_CHAR_LEN    16
 #define DATA_INLINE     (0 << 7)
 #define DATA_EXTERNAL   (1 << 7)
 
