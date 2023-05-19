@@ -32,6 +32,7 @@ stream.
   
 - `w` Data Width in bits for external file data source
     - Valid: 8 (default), 16, 24, 32
+    - This must precede `-D` in the command line if greater than an 8 bit data width is desired
 
 - `-D` Data from some file to be serialized
     - Should be hex values seperated by a newline
@@ -67,7 +68,11 @@ A file named `testVectors.mem` containing the following:
 Can be processed via the following:  
 `./serialSourceGen -p uart -w 8 -D testVectors.mem -f 8N1 -b 500000 -T`  
 Note: when using 8 bit datatypes specifying a `-w` width is optional.  
-Note: The width specifier must be present before the `-D` file call
+Note: The width specifier must be present before the `-D` file call.  
+  
+Vectors should be given in hex format, a leading `0x` is not required.  
+If an incorrect data width is selected, the LSB of the vector will  
+be processed, the rest will be discarded.
   
 
 
