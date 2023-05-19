@@ -666,12 +666,11 @@ void generate_tb(FILE *fp, uint8_t protocol, uint32_t delay_ns, uint16_t values_
     fprintf(fp, "\t\t$readmemh(\"serialized_data.mem\", serialized_values);\n");
 
     fprintf(fp, "\n\t\tforever begin\n\t\t\t");
-    fprintf(fp, "if(en) begin\n\t\t\t\t");
-    fprintf(fp, "SERIAL_STREAM <= serialized_values[n];\n\t\t\t\t");
-    fprintf(fp, "if(n < SERIALIZED_LEN - 1) n <= n + 1;\n\t\t\t\t");
-    fprintf(fp, "else n <= 0;\n\t\t\t\t");
-    fprintf(fp, "#%u;\t//This determines your baudrate\n\t\t\tend\n", delay_ns);
-    fprintf(fp, "\t\tend\n\tend\n");
+    fprintf(fp, "SERIAL_STREAM <= serialized_values[n];\n\t\t\t");
+    fprintf(fp, "if(n < SERIALIZED_LEN - 1) n <= n + 1;\n\t\t\t");
+    fprintf(fp, "else n <= 0;\n\t\t\t");
+    fprintf(fp, "#%u;\t// ns, This determines your baudrate\n\t\tend\n", delay_ns);
+    fprintf(fp, "\t\n\tend\n");
 
 }
 
