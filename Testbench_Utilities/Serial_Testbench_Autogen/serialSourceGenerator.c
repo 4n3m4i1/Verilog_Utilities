@@ -41,6 +41,10 @@
 
         -T      Generate testbench file
 
+        -P      Pause Bits
+                    Number of bits to stall between data frames
+                    before sending next frame
+
         Protocol option MUST come first, inline data must not be last argument
             if this is desired please terminate the data input with a " -"
             to indicate a field stop
@@ -71,16 +75,25 @@
 #define DATA_FILE   'D'
 #define BAUD        'b'
 #define GEN_TB      'T'
+#define PAUSEBITS   'P'
 
 
 uint8_t is_valid_protocol(char *input_str);
 uint8_t fmt_create(uint8_t protocol_type, char *input_str);
 uint8_t fmt_uart(char *input_str);
 
-void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt);
-uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t data_len);
+void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt, uint32_t pause_bits);
+uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t data_len, uint32_t pause_bits);
 void generate_tb(FILE *fp, uint8_t protocol, uint32_t delay_ns, uint16_t values_written);
 
+// Struct transition in the future, this is getting too big for how it is now
+/*
+struct {
+    uint16_t values_written;
+    uint16_t data_bytes_written;
+    uint16_t padding_bits_written;
+} GENVALS;
+*/
 void main(int argc, char **argv){
     if(argc < MINARGS){
         printf("Invalid number of arguments.\n");
@@ -91,14 +104,15 @@ void main(int argc, char **argv){
 
 #endif // DEBUG_OUTPUT
 
-    uint8_t     state_select[MINARGS] = {0x00};
-    uint8_t     *data_set;
-    uint16_t    data_count = 0;
+    uint8_t     state_select[MINARGS] = {0x00}; // State parameters that drive generation
+    uint8_t     *data_set;                  // Pointer to dynamic sample array to serialize
+    uint16_t    data_count = 0;             // Number of data fields in file or inline
 
-    uint8_t     endianness = LITTLE_ENDIAN;
-    uint32_t    baudrate = 1;
+    uint8_t     endianness = LITTLE_ENDIAN; // Default data format, will be variable someday
+    uint32_t    baudrate = 1;   // Bits per second, plays into testbench delays
 
     uint8_t     OPT = 0;        // Testbench generation and more here
+    uint32_t    PAUSE = 0;      // Pause between data frames in units of bits
 
     for(uint32_t n = 1; n < MAX(MINARGS, argc); n++){
         if(ISARG(argv[n][0])){
@@ -254,6 +268,10 @@ void main(int argc, char **argv){
 #endif // DEBUG_OUTPUT
                     OPT |= GENERATE_TB;
                 break;
+
+                case PAUSEBITS:
+                    if(n < argc) PAUSE = (uint32_t)strtol(argv[++n], NULL, 10);
+                break;
             }
         }
     }
@@ -282,7 +300,7 @@ void main(int argc, char **argv){
     }
 
     //void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt){
-    serializer(state_select, baudrate, data_set, data_count, OPT);
+    serializer(state_select, baudrate, data_set, data_count, OPT, PAUSE);
 
 
     if(state_select[DATA_SRC_PTR] != RETURN_ERROR){
@@ -393,7 +411,7 @@ uint8_t fmt_uart(char *input_str){
 // Actually create output serial data stream and
 //  associated testbench driver code.
 
-void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt){
+void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_len, uint8_t opt, uint32_t pause_bits){
     FILE *memfile;
     FILE *tb_file;
 
@@ -406,7 +424,7 @@ void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_
 
     switch(rules[PROTOCOL_PTR]){
         case PROTOCOL_UART:
-            serialized_vals = uart_mem_gen(memfile, rules[FORMAT_PTR], data_src, data_len);
+            serialized_vals = uart_mem_gen(memfile, rules[FORMAT_PTR], data_src, data_len, pause_bits);
         break;
 
         default:
@@ -430,7 +448,7 @@ void serializer(uint8_t *rules, uint32_t baud, uint8_t *data_src, uint16_t data_
 // .mem generators return the number of written bytes
 //  eg the number of serial bit events present
 // UART .mem generator
-uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t data_len){
+uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t data_len, uint32_t pause_bits){
     uint16_t bytes_written = 0;
 
     uint8_t data_bit_ct = fmt_rules & 0x0F;
@@ -483,6 +501,14 @@ uint16_t uart_mem_gen(FILE *fp, uint8_t fmt_rules, uint8_t *data_src, uint16_t d
             } else {                // Single stop bit
                 fprintf(fp, "1");
                 bytes_written += 1;
+            }
+
+            // Write bits between data frames
+            if(pause_bits){
+                for(uint32_t q = 0; q < pause_bits; q++){
+                    fprintf(fp, "\n1");
+                    bytes_written += 1;
+                }
             }
 
             if(!(n == data_len - 1)) fprintf(fp, "\n");

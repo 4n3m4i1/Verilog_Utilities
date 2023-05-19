@@ -38,11 +38,17 @@ stream.
 - `T` Generate Testbench snippit code  
     - `.mem` is generated automatically, testbench must be selected
     - The baudrate selected will be present in the form of `ns` delays 
+
+- `P` Pause Bits between data frames
+    - The default value is zero, such that the next start condition is the  
+        bit after the stop condition.
   
 
 ## Command Line Example
-`./serialSourceGenerator -p uart -d 0xAA 0x55 0xFF 0x81 -f 8N1 -b 500000 -T`  
+`./serialSourceGenerator -p uart -d 0xAA 0x55 0xFF 0x81 -f 8N1 -b 500000 -T -P 10`  
 Will generate a `.mem` file containing the serialized form of  
 the inline data bytes provided (0xAA 0x55 0xFF 0x81) in little endian  
-8N1 format, a testbench is generated that matches 500k baud output.
+8N1 format, a testbench is generated that matches 500k baud output.  
+There will be a 10 bit delay (10 * 1/BAUDRATE seconds) between data frames  
+(eg. last STOP bit -> 10 bits idle -> next START)
 
