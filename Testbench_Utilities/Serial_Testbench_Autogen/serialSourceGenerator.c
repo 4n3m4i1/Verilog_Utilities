@@ -119,7 +119,7 @@ void main(int argc, char **argv){
     uint8_t     *data_set;                  // Pointer to dynamic sample array to serialize
     uint16_t    data_count = 0;             // Number of data fields in file or inline
 
-    uint8_t     endianness = LITTLE_ENDIAN; // Default data format, will be variable someday
+    uint8_t     endianness = ___LITTLE_ENDIAN___; // Default data format, will be variable someday
     uint32_t    baudrate = 1;   // Bits per second, plays into testbench delays
 
     uint8_t     OPT = 0;        // Testbench generation and more here
