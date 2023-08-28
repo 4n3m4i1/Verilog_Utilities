@@ -5,8 +5,8 @@
 
 #define RETURN_ERROR    0xFF
 
-#define LITTLE_ENDIAN   0x00
-#define BIG_ENDIAN      0x01
+#define ___LITTLE_ENDIAN___   0x00
+#define ___BIG_ENDIAN___      0x01
 
 #define PROTOCOL_PTR    0
 #define PROTOCOL_UART   'u'
